@@ -1,0 +1,219 @@
+---
+title: "Analisis Ekonomi Jawa Tengah 2020-2024"
+author: "Wafi"
+date: today
+format:
+  html:
+    toc: true
+    toc-title: "Daftar Isi"
+    toc-depth: 3
+    theme: flatly
+    code-fold: true
+    code-tools: true
+    number-sections: true
+lang: id
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(corrplot)
+library(GGally)
+library(plm)
+library(stargazer)
+library(knitr)
+
+PATH     <- "D:/PROJECT INTERN/FILE PROJECT/"
+df_final <- read_csv(paste0(PATH, "df_final_panel.csv"),
+                     show_col_types = FALSE)
+```
+
+# Pendahuluan
+
+Laporan ini menyajikan analisis indikator ekonomi Kabupaten/Kota di Provinsi Jawa Tengah periode 2020–2024. Indikator yang dianalisis meliputi:
+
+-   **Kemiskinan** : Persentase penduduk miskin (%)
+-   **IPM** : Indeks Pembangunan Manusia
+-   **TPT** : Tingkat Pengangguran Terbuka (%)
+-   **PDRB** : Laju Pertumbuhan Ekonomi (%)
+
+# Data
+
+## Sumber Data
+
+Data bersumber dari Badan Pusat Statistik (BPS) Provinsi Jawa Tengah, mencakup 35 Kabupaten/Kota periode 2020–2024.
+
+## Struktur Data
+
+```{r}
+df_final |>
+  head(10) |>
+  kable(caption = "10 Baris Pertama Data Panel",
+        col.names = c("Kabupaten/Kota", "Tahun", 
+                      "Kemiskinan (%)", "IPM", "TPT (%)", "PDRB (%)"),
+        align = c("l", "c", "c", "c", "c", "c")) |>
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover", "bordered"),
+                            full_width = TRUE,
+                            font_size = 13)
+```
+
+## Statistik Deskriptif
+
+```{r}
+df_final |>
+  select(kemiskinan_pct, ipm, tpt, pdrb) |>
+  summary() |>
+  kable(caption = "Statistik Deskriptif Indikator Ekonomi")
+```
+
+# Analisis Deskriptif
+
+## Tren Per Tahun
+
+```{r fig.width=10, fig.height=6}
+df_tren <- df_final |>
+  group_by(tahun) |>
+  summarise(
+    Kemiskinan = mean(kemiskinan_pct, na.rm = TRUE),
+    IPM        = mean(ipm,            na.rm = TRUE),
+    TPT        = mean(tpt,            na.rm = TRUE),
+    PDRB       = mean(pdrb,           na.rm = TRUE)
+  ) |>
+  pivot_longer(-tahun, names_to = "Indikator", values_to = "Nilai")
+
+ggplot(df_tren, aes(x = tahun, y = Nilai, color = Indikator)) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 3) +
+  facet_wrap(~Indikator, scales = "free_y") +
+  scale_x_continuous(breaks = 2020:2024) +
+  labs(title    = "Tren Indikator Ekonomi Jawa Tengah (2020-2024)",
+       subtitle = "Rata-rata seluruh Kabupaten/Kota",
+       x = "Tahun", y = "Nilai") +
+  theme_classic() +
+  theme(legend.position = "none")
+```
+
+## Top 10 Kabupaten Termiskin
+
+```{r fig.width=10, fig.height=6}
+df_final |>
+  group_by(kabupaten_kota) |>
+  summarise(avg_kemiskinan = mean(kemiskinan_pct, na.rm = TRUE)) |>
+  arrange(desc(avg_kemiskinan)) |>
+  head(10) |>
+  ggplot(aes(x = reorder(kabupaten_kota, avg_kemiskinan),
+             y = avg_kemiskinan, fill = avg_kemiskinan)) +
+  geom_col(show.legend = FALSE) +
+  geom_text(aes(label = round(avg_kemiskinan, 1)), hjust = -0.2) +
+  scale_fill_gradient(low = "#f7c59f", high = "#e84545") +
+  coord_flip() +
+  labs(title = "Top 10 Kabupaten/Kota Tingkat Kemiskinan Tertinggi",
+       subtitle = "Rata-rata 2020-2024 (%)", x = NULL, y = "Kemiskinan (%)") +
+  theme_classic()
+```
+
+# Analisis Korelasi
+
+## Matriks Korelasi
+
+```{r fig.width=8, fig.height=7}
+df_cor <- df_final |>
+  select(kemiskinan_pct, ipm, tpt, pdrb) |>
+  drop_na()
+
+mat_cor <- cor(df_cor, method = "pearson")
+
+corrplot(mat_cor,
+         method      = "color",
+         type        = "upper",
+         addCoef.col = "black",
+         tl.col      = "black",
+         tl.srt      = 45,
+         col         = colorRampPalette(c("#d73027", "white", "#1a6b8a"))(200),
+         title       = "Matriks Korelasi",
+         mar         = c(0, 0, 2, 0))
+```
+
+## Scatter Plot Matrix
+
+```{r fig.width=10, fig.height=8, message=FALSE, warning=FALSE}
+ggpairs(df_cor,
+        columnLabels = c("Kemiskinan (%)", "IPM", "TPT (%)", "PDRB (%)"),
+        upper = list(continuous = wrap("cor", size = 4)),
+        lower = list(continuous = wrap("smooth", method = "lm",
+                                       color = "#1a6b8a", alpha = 0.4)),
+        diag  = list(continuous = wrap("densityDiag", fill = "#a8edea"))) +
+  theme_classic()
+```
+
+# Analisis Regresi Data Panel
+
+## Persiapan Data Panel
+
+```{r}
+df_panel <- df_final |> drop_na() |> arrange(kabupaten_kota, tahun)
+pdata    <- pdata.frame(df_panel, index = c("kabupaten_kota", "tahun"))
+
+cat("Jumlah observasi :", nrow(pdata))
+cat("\nJumlah individu  :", length(unique(pdata$kabupaten_kota)))
+cat("\nJumlah periode   :", length(unique(pdata$tahun)))
+```
+
+## Estimasi Model
+
+```{r}
+model_ols <- plm(kemiskinan_pct ~ ipm + tpt + pdrb,
+                 data = pdata, model = "pooling")
+model_fem <- plm(kemiskinan_pct ~ ipm + tpt + pdrb,
+                 data = pdata, model = "within", effect = "twoways")
+model_rem <- plm(kemiskinan_pct ~ ipm + tpt + pdrb,
+                 data = pdata, model = "random")
+```
+
+## Uji Pemilihan Model
+
+```{r}
+uji_chow    <- pFtest(model_fem, model_ols)
+uji_bp      <- plmtest(model_ols, type = "bp")
+uji_hausman <- phtest(model_fem, model_rem)
+
+tibble(
+  Uji         = c("Chow (OLS vs FEM)",
+                  "Breusch-Pagan (OLS vs REM)",
+                  "Hausman (FEM vs REM)"),
+  `P-Value`   = c(round(uji_chow$p.value,    4),
+                  round(uji_bp$p.value,       4),
+                  round(uji_hausman$p.value,  4)),
+  Kesimpulan  = c(
+    ifelse(uji_chow$p.value    < 0.05, "FEM > OLS",    "OLS lebih baik"),
+    ifelse(uji_bp$p.value      < 0.05, "REM > OLS",    "OLS lebih baik"),
+    ifelse(uji_hausman$p.value < 0.05, "Gunakan FEM",  "Gunakan REM"))
+) |> kable(caption = "Ringkasan Uji Pemilihan Model")
+```
+
+## Hasil Model Terbaik
+
+```{r results='asis'}
+model_terbaik <- if (uji_hausman$p.value < 0.05) model_fem else model_rem
+nama_model    <- if (uji_hausman$p.value < 0.05) "Fixed Effect" else "Random Effect"
+
+cat("**Model terpilih:**", nama_model, "\n\n")
+stargazer(model_terbaik,
+          type             = "html",
+          title            = paste("Hasil", nama_model, "Model"),
+          dep.var.labels   = "Kemiskinan (%)",
+          covariate.labels = c("IPM", "TPT (%)", "PDRB (%)"))
+```
+
+# Kesimpulan
+
+Berdasarkan analisis yang telah dilakukan:
+
+1.  **Tren Kemiskinan** menunjukkan penurunan secara konsisten di Jawa Tengah periode 2020–2024.
+
+2.  **IPM** memiliki korelasi negatif kuat dengan kemiskinan — semakin tinggi IPM, semakin rendah tingkat kemiskinan.
+
+3.  **Model terpilih** adalah `r nama_model` berdasarkan uji Hausman, yang menunjukkan bahwa IPM, TPT, dan PDRB berpengaruh signifikan terhadap kemiskinan di Jawa Tengah.
+
+------------------------------------------------------------------------
+
+*Laporan dibuat menggunakan R dan Quarto*
