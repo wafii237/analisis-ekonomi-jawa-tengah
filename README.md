@@ -40,15 +40,5 @@ exploratory data analysis, visualisasi, analisis korelasi, dan regresi data pane
 - TPT berpengaruh **positif signifikan** terhadap kemiskinan  
 - Model terbaik: **Fixed Effect Model** berdasarkan Uji Hausman
 
-## 👤 Author
-**Wafi** - Mahasiswa Statistika
-```
 
-4. Klik **Commit changes**
 
----
-
-### STEP 4 — Lihat Hasilnya
-Repository kamu sekarang punya URL seperti:
-```
-https://github.com/username/analisis-ekonomi-jawa-tengah
