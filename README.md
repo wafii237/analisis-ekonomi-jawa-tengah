@@ -36,6 +36,11 @@ exploratory data analysis, visualisasi, analisis korelasi, dan regresi data pane
 🔗 **RPubs**: [Lihat Laporan Lengkap](https://rpubs.com/Wafifaeruz/analisis-ekonomi-jateng)
 📊 Dashboard Shiny | https://wafifaeruz.shinyapps.io/dashboard_ekonomi_jateng/ |
 
+## 🗄️ Project 3 - SQL + Python
+- Tools: Python, SQLite, Pandas, Matplotlib
+- File: `03_sql_python.ipynb`
+- Analisis data ekonomi Jawa Tengah menggunakan SQL query dan visualisasi Python
+
 ## 📌 Kesimpulan
 - IPM berpengaruh **negatif signifikan** terhadap kemiskinan
 - TPT berpengaruh **positif signifikan** terhadap kemiskinan  
