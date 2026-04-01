@@ -34,6 +34,7 @@ exploratory data analysis, visualisasi, analisis korelasi, dan regresi data pane
 
 ## 📊 Hasil Laporan
 🔗 **RPubs**: [Lihat Laporan Lengkap](https://rpubs.com/Wafifaeruz/analisis-ekonomi-jateng)
+📊 Dashboard Shiny | https://wafifaeruz.shinyapps.io/dashboard_ekonomi_jateng/ |
 
 ## 📌 Kesimpulan
 - IPM berpengaruh **negatif signifikan** terhadap kemiskinan
